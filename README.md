@@ -1,4 +1,4 @@
-# Forecast Downloader
+# AROME Forecast Downloader
 
 A tiny “fire-and-forget” container that watches the public GeoSphere listing at
 `https://public.hub.geosphere.at/datahub/resources/nwp-v1-1h-2500m/filelisting/`,
