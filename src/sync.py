@@ -86,7 +86,7 @@ def determine_missing_files(remote_files: Iterable[str]) -> list[str]:
     return missing
 
 
-def download_file(filename: str) -> None:
+def download_file(filename: str, show_progress: bool = False) -> None:
     """Download a single NetCDF file into the appropriate monthly folder."""
 
     year = filename[4:8]
@@ -107,15 +107,13 @@ def download_file(filename: str) -> None:
                     if chunk:
                         handle.write(chunk)
                         downloaded += len(chunk)
-                        if total_size:
-                            percent = (downloaded / total_size) * 100
-                            if downloaded - last_logged >= 100 * 1024 * 1024:
-                                LOGGER.debug(f"Downloading {filename}: {downloaded / (1024*1024*1024):.2f} GB / {total_size / (1024*1024*1024):.2f} GB ({percent:.1f}%)")
-                                last_logged = downloaded
-                        else:
-                            if downloaded - last_logged >= 100 * 1024 * 1024:
-                                LOGGER.debug(f"Downloading {filename}: {downloaded / (1024*1024*1024):.2f} GB")
-                                last_logged = downloaded
+                        if show_progress and downloaded - last_logged >= 100 * 1024 * 1024:
+                            if total_size:
+                                percent = (downloaded / total_size) * 100
+                                LOGGER.info(f"Downloading {filename}: {downloaded / (1024*1024*1024):.2f} GB / {total_size / (1024*1024*1024):.2f} GB ({percent:.1f}%)")
+                            else:
+                                LOGGER.info(f"Downloading {filename}: {downloaded / (1024*1024*1024):.2f} GB")
+                            last_logged = downloaded
             LOGGER.info(f"Completed download: {filename} ({downloaded / (1024*1024*1024):.2f} GB)")
     except Exception as e:
         LOGGER.error(f"Error downloading file {filename}: {e}")
@@ -124,7 +122,7 @@ def download_file(filename: str) -> None:
             destination.unlink(missing_ok=True)
         raise
 
-def sync_once() -> list[str]:
+def sync_once(show_progress: bool = False) -> list[str]:
     """Perform one synchronization pass and return the downloaded filenames."""
 
     LOGGER.debug("Starting synchronization...")
@@ -145,7 +143,7 @@ def sync_once() -> list[str]:
     downloaded: list[str] = []
     for idx, filename in enumerate(missing_files, 1):
         LOGGER.debug(f"Downloading file {idx}/{len(missing_files)}: {filename}")
-        download_file(filename)
+        download_file(filename, show_progress=show_progress)
         downloaded.append(filename)
     LOGGER.info(f"Successfully downloaded {len(downloaded)} file(s)")
     return downloaded
@@ -199,6 +197,11 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Enable debug logging to stdout",
     )
+    parser.add_argument(
+        "--progress",
+        action="store_true",
+        help="Show download progress updates",
+    )
     return parser.parse_args()
 
 
@@ -210,7 +213,7 @@ def main() -> None:
     LOGGER.info(f"Synchronization started at {run_start.isoformat()}")
     LOGGER.info("=" * 60)
     try:
-        downloaded = sync_once()
+        downloaded = sync_once(show_progress=args.progress)
         log_run_summary(run_start, downloaded)
         LOGGER.info("=" * 60)
         LOGGER.info("Synchronization completed successfully")
