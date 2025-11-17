@@ -13,4 +13,4 @@ COPY src ./src
 
 VOLUME ["/data"]
 
-ENTRYPOINT ["python", "src/sync.py"]
+CMD ["python", "src/sync.py"]
